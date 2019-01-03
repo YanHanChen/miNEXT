@@ -205,7 +205,7 @@ dq_hat <- function(data, allpts = FALSE, size = NULL, knots = 20 ){
   return(list(q0 = d0, q1 = d1, q2 = d2, q0_ana = q0_ana))
 }
 
-#' multi.plot(data, ans1, type) plot the outcome of dq_hat.
+#' multi.plot(data, ans1, type) plot the outcome of S_abundance(abundance data) or dq_hat(incidence data).
 #' @param data the Sx2 data used in dq_hat.
 #' @param ans1 the outcome of dq_hat.
 #' @param type datatype of data, "abundance" or "incidence". Default is "abundance".
