@@ -6,7 +6,7 @@ library(ggpubr)
 library(reshape2)
 sourceCpp('function_abun.cpp')
 
-#' multi.plot(data, ans1, type) plot the outcome of dq_hat.
+#' multi.plot(data, ans1, type) plot the outcome of S_abundance(abundance data) or dq_hat(incidence data).
 #' @param data the Sx2 data used in dq_hat.
 #' @param ans1 the outcome of dq_hat.
 #' @param type datatype of data, "abundance" or "incidence". Default is "abundance".
