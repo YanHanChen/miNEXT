@@ -1,0 +1,24 @@
+"forest" "logged"
+"t" 18 16
+"Amsel" 5 0
+"Buchfink" 17 10
+"Buntspecht" 3 0
+"Dreizehenspecht" 2 0
+"Eichelhaeher" 1 0
+"Erlenzeisig" 8 4
+"Fichtenkreuzschnabel" 8 3
+"Fitis" 7 7
+"Gartengrasmuecke" 2 3
+"Gartenrotschwanz" 1 4
+"Gebirgsstelze" 1 0
+"Haubenmeise" 2 0
+"Hausrotschwanz" 0 3
+"Kleiber" 4 0
+"Maeusebussard" 1 0
+"Misteldrossel" 6 1
+"Singdrossel" 2 0
+"Weidenmeise" 1 0
+"Wiesenpieper" 0 1
+"Wintergoldhaehnchen" 11 1
+"Zaunkoenig" 12 5
+"Zilpzalp" 5 0
