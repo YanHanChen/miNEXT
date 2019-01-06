@@ -1,12 +1,15 @@
 #*******************************************************************************
 #********************************************************************************
 #
-## R scipts "Abundance" for Chao et al. (2019) paper on proportional mixture of rarefaction/extrapolation. 
-## This R code for replicated incidence data includes two parts:
-# (i) Script for computing and plotting proportional mixture of two rarefaction/extrapolation curves, and
-# (ii) Script for computing and plotting the number of shared and unique species in any mixed sample.
+## R scipts "Incidence" for Chao et al. (2019) paper on proportional mixture of rarefaction/extrapolation. 
+## This R code for incidence data to compute and plot proportional mixture of two rarefaction/extrapolation curves, and
+# the number of shared and unique species in any two mixture of rarefaction curves.
+# This code includes three parts:
+# (1) Comupute composite diversity of any sample and species composition (shared and unique species);
+# (2) Plot individual rarefaction/extrapolation curves and mixture curves;
+# (3) Example.
 #
-# NOTE: The packages "ggplot2", "dplyr", "vegan", "reshape2", "ggpubr", "Rcpp", must be 
+# NOTE: The packages "ggplot2", "dplyr", "reshape2", "ggpubr", "Rcpp", "vegan" must be 
 # installed and loaded before running the scripts. 
 # 
 #
@@ -16,7 +19,7 @@
 
 ####################################################################################
 #
-# (1). Computing the profiles for six classes of evenness measures (Figure 3)
+# (1). Comupute composite diversity of any sample and species composition (shared and unique species)
 #
 ####################################################################################
 
@@ -227,6 +230,11 @@ dq_hat <- function(data, allpts = FALSE, size = NULL, knots = 20 ){
   return(list(q0 = d0, q1 = d1, q2 = d2, q0_ana = q0_ana))
 }
 
+####################################################################################
+#
+# (2). Plot individual rarefaction/extrapolation curves and mixture curves
+#
+####################################################################################
 #' multi.plot(data, ans1, type) plot the outcome of S_abundance(abundance data) or dq_hat(incidence data).
 #' @param data the Sx2 data used in dq_hat.
 #' @param ans1 the outcome of dq_hat.
@@ -410,8 +418,11 @@ multi.plot <- function(data, ans1, type = "abundance"){
   g1 = ggarrange(p0, p1, p2, ncol=1, nrow=3, common.legend = TRUE, legend="bottom",labels = c("(a)", "(b)", "(c)"),font.label = list(size = 20))
   return(list(div = g1, comp = p0_ana))
 }
-
-#====birds data as an example====
+####################################################################################
+#
+# (3). Example
+#
+####################################################################################
 bird = read.table("bird.txt")
 result_inci_bird = dq_hat(bird, knots = 10)
 multi.plot(data = bird, ans1 = result_inci_bird, type = "incidence")
