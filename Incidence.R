@@ -36,7 +36,7 @@ sourceCpp('function_inci.cpp')
 #' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
 #' @param knots the number of points that the mixture diveristy will be computed. Default is 20.
 #' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. 
-incidence <- function(data, allpts = FALSE, size = NULL, knots = 20 ){
+Incidence <- function(data, allpts = FALSE, size = NULL, knots = 20 ){
   d2_hat  <- function(x1,x2,t1,t2){
     if(t1!=0 || t2!=0){
       u1 = sum(x1)
