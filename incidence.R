@@ -1,3 +1,25 @@
+#*******************************************************************************
+#********************************************************************************
+#
+## R scipts "Abundance" for Chao et al. (2019) paper on proportional mixture of rarefaction/extrapolation. 
+## This R code for replicated incidence data includes two parts:
+# (i) Script for computing and plotting proportional mixture of two rarefaction/extrapolation curves, and
+# (ii) Script for computing and plotting the number of shared and unique species in any mixed sample.
+#
+# NOTE: The packages "ggplot2", "dplyr", "vegan", "reshape2", "ggpubr", "Rcpp", must be 
+# installed and loaded before running the scripts. 
+# 
+#
+#*******************************************************************************
+#*******************************************************************************
+
+
+####################################################################################
+#
+# (1). Computing the profiles for six classes of evenness measures (Figure 3)
+#
+####################################################################################
+
 library(Rcpp)
 library(ggplot2)
 library(dplyr)
