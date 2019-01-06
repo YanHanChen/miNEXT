@@ -29,13 +29,13 @@ library(ggpubr)
 library(reshape2)
 sourceCpp('function_abun.cpp')
 
-#' abundance(data, knots = 20) for abundance data, comupute composite diversity of any sample and species composition (shared and unique species)
-#' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be the first column.
+#' Abundance(data, knots = 20) for abundance data, comupute composite diversity of any sample and species composition (shared and unique species)
+#' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be placed in the first column.
 #' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
 #' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
 #' @param knots the number of points that the mixture diveristy will be computed. Default is 20.
 #' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. 
-abundance <- function(data1, knots = 10){
+Abundance <- function(data1, knots = 10){
   x1 = data1[, 1]
   x2 = data1[, 2]
   n1 = sum(x1)
@@ -238,9 +238,9 @@ abundance <- function(data1, knots = 10){
 #
 ####################################################################################
                
-#' multi.plot(data, ans1, type) plot the outcome of abundance(abundance data) or incidence(incidence data).
-#' @param data the Sx2 data used in incidence.
-#' @param ans1 the outcome of incidence.
+#' multi.plot(data, ans1, type) plot the outcome of Abundance(abundance data) or Incidence(incidence data).
+#' @param data the Sx2 data used in Abundance/Incidence.
+#' @param ans1 the outcome of Abundance/Incidence.
 #' @param type datatype of data, "abundance" or "incidence". Default is "abundance".
 #' @return a list containing two plots: $div for diversity of q = 0, 1, 2 and $comp for species composition.
 multi.plot <- function(data, ans1, type = "abundance"){
@@ -427,5 +427,5 @@ multi.plot <- function(data, ans1, type = "abundance"){
 #
 ####################################################################################
 spider = read.table("spider.txt")
-result_abun_spider = abundance(spider, knots = 10)
+result_abun_spider = Abundance(spider, knots = 10)
 multi.plot(data = spider, ans1 = result_abun_spider, type = "abundance")
