@@ -2,11 +2,14 @@
 #********************************************************************************
 #
 ## R scipts "Abundance" for Chao et al. (2019) paper on proportional mixture of rarefaction/extrapolation. 
-## This R code for abundance data includes two parts
-# (i) Script for computing and plotting proportional mixture of two rarefaction/extrapolation curves, and
-# (ii) Script for computing and plotting the number of shared and unique species in any mixed sample.
+## This R code for abundance data to compute and plot proportional mixture of two rarefaction/extrapolation curves, and
+# the number of shared and unique species in any two mixture of rarefaction curves.
+# This code includes three parts:
+# (1) Comupute composite diversity of any sample and species composition (shared and unique species);
+# (2) Plot individual rarefaction/extrapolation curves and mixture curves;
+# (3) Example.
 #
-# NOTE: The packages "ggplot2", "dplyr", "ade4", "reshape2", "ggpubr", "phytools", "ape" must be 
+# NOTE: The packages "ggplot2", "dplyr", "reshape2", "ggpubr", "Rcpp", "vegan" must be 
 # installed and loaded before running the scripts. 
 # 
 #
@@ -16,18 +19,9 @@
 
 ####################################################################################
 #
-# (1). Computing the profiles for six classes of evenness measures (Figure 3)
+# (1). Comupute composite diversity of any sample and species composition (shared and unique species)
 #
 ####################################################################################
-library(dplyr)
-library(ade4)
-library(phytools)
-library(ggplot2)
-library(ape)
-library(reshape2)
-library(ggpubr)
-
-
 library(Rcpp)
 library(ggplot2)
 library(dplyr)
@@ -239,6 +233,12 @@ S_abundance <- function(data1, knots = 10){
 
 }
 
+####################################################################################
+#
+# (2). Plot individual rarefaction/extrapolation curves and mixture curves
+#
+####################################################################################
+               
 #' multi.plot(data, ans1, type) plot the outcome of S_abundance(abundance data) or dq_hat(incidence data).
 #' @param data the Sx2 data used in dq_hat.
 #' @param ans1 the outcome of dq_hat.
@@ -422,8 +422,11 @@ multi.plot <- function(data, ans1, type = "abundance"){
   g1 = ggarrange(p0, p1, p2, ncol=1, nrow=3, common.legend = TRUE, legend="bottom",labels = c("(a)", "(b)", "(c)"),font.label = list(size = 20))
   return(list(div = g1, comp = p0_ana))
 }
-
-#====spider data as an example====
+####################################################################################
+#
+# (2). Example
+#
+####################################################################################
 spider = read.table("spider.txt")
 result_abun_spider = S_abundance(spider, knots = 10)
 multi.plot(data = spider, ans1 = result_abun_spider, type = "abundance")
