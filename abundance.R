@@ -239,8 +239,8 @@ abundance <- function(data1, knots = 10){
 ####################################################################################
                
 #' multi.plot(data, ans1, type) plot the outcome of abundance(abundance data) or incidence(incidence data).
-#' @param data the Sx2 data used in dq_hat.
-#' @param ans1 the outcome of dq_hat.
+#' @param data the Sx2 data used in incidence.
+#' @param ans1 the outcome of incidence.
 #' @param type datatype of data, "abundance" or "incidence". Default is "abundance".
 #' @return a list containing two plots: $div for diversity of q = 0, 1, 2 and $comp for species composition.
 multi.plot <- function(data, ans1, type = "abundance"){
