@@ -33,7 +33,7 @@ sourceCpp('function_abun.cpp')
 #' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be placed in the first column.
 #' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
 #' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
-#' @param knots the number of points that the mixture diveristy will be computed. Default is 20.
+#' @param knots the number of points that the mixture diveristy will be computed in rarefaction and extrapolation, respectively. Default is 10.
 #' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. 
 Abundance <- function(data1, knots = 10){
   x1 = data1[, 1]
