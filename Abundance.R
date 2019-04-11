@@ -28,14 +28,21 @@ library(dplyr)
 library(ggpubr)
 library(reshape2)
 sourceCpp('function_abun.cpp')
+source("Abundance_subfunction.R")
 
 #' Abundance(data, knots = 20) for abundance data, comupute composite diversity of any sample and species composition (shared and unique species)
-#' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be placed in the first column.
-#' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
+#' @param data1 a Sx2 dataframe, the intact assemblage (main) assemblage should be placed in the first column.
 #' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
 #' @param knots the number of points that the mixture diveristy will be computed in rarefaction and extrapolation, respectively. Default is 10.
 #' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. 
-Abundance <- function(data1, knots = 10){
+Abundance <- function(data1, knots = 10, size = NULL){
+  D1 = sum(data1[, 1]>0)
+  D2 = sum(data1[, 2]>0)
+  if(D1<D2){
+    data1 <- data1[,c(2,1)]
+  }else{
+    data1 <- data1
+  }
   x1 = data1[, 1]
   x2 = data1[, 2]
   n1 = sum(x1)
@@ -71,165 +78,187 @@ Abundance <- function(data1, knots = 10){
       m1 = round(seq(0, (n2), length.out = knots))
     }
   }
-  
-  DetAbu = function(x, zero=FALSE){
-    x <- unlist(x)
-    n <- sum(x)
-    f1 <- sum(x==1)
-    f2 <- sum(x==2)
-    f3 <- sum(x==3)
-    if(f2==0){
-      f1 <- max(f1 - 1, 0)
-      f2 <- 1
-    }
-    A1 <- f1 / n * ((n-1)*f1 / ((n-1)*f1 + 2*max(f2,1)))
-    A2 <- f2 / choose(n, 2) * ((n-2)*f2 / ((n-2)*f2 + 3*max(f3,1)))^2
-    if(zero==FALSE) x <- x[x>0]
-    q.solve <- function(q){
-      e <- A1 / sum(x/n*exp(-q*x))
-      out <- sum((x/n * (1 - e * exp(-q*x)))^2) - sum(choose(x,2)/choose(n,2)) + A2
-      abs(out)
-    }
-    q <- tryCatch(optimize(q.solve, c(0,1))$min, error = function(e) {1})
-    e <- A1 / sum(x/n*exp(-q*x))
-    o <- x/n * (1 - e * exp(-q*x))
-    o
+  if(!is.null(size)){
+    m1 <- size
+    m2 <- n1- m1 
+    m = cbind(m1, m2)
   }
+  
+  maxx1<-max(x1)
+  maxx2<-max(x2)
+  
+  
+  ###Assam I,q0,q1,q2############
+  
+  print(paste("start  q0_1,q1_1,q2_1",Sys.time())) 
+  mm<-cbind(m1,0)
+  q0_1<-Dq_in(x1,x2,mm,0)
+  q1_1<-Dq_in(x1,x2,mm,1)
+  q2_1<-Dq_in(x1,x2,mm,2)
+  q2_1_new<-Dq2(x1,x2,mm,n1,n2)
+  
+  
+  ###Assam II,q0 in,ext ok,q1 in ok,ext ok, q2 in ext ok
+  print(paste("start  q0_2_in,q1_2_in",Sys.time())) 
+  m2tmp<-m2[m2<=n2]
+  mm<-cbind(0,m2tmp)
+  q0_2_in<-Dq_in(x1,x2,mm,0)
+  q1_2_in<-Dq_in(x1,x2,mm,1)
+  
+  
   
   p1 = DetAbu(data1[,1], zero = T)
   p2 = DetAbu(data1[,2], zero = T)
-  
   p = cbind(p1, p2)
   p1_hat = p[, 1]
   p2_hat = p[, 2]
-  D0_1 =apply(cbind(m1, 0), 1, function(mm){
-    m1 = mm[1]
-    m2 = mm[2]
-    if(m1<=n1&m2<=n2){
-      out = D_share(x1, x2, m1, m2, 0)
-    }else if(m1<=n1&m2>n2){
-      p1a = p1_hat[(x1>=1)&(x2>=1)]
-      p2a = p2_hat[(x1>=1)&(x2>=1)]
-      p1b = p1_hat[(x1==0)&(x2>=1)]
-      p2b = p2_hat[(x1==0)&(x2>=1)]
-      sub1 = ifelse((m1==0)|(m2==0), sum((1-p1a)^m1*(1-p2a)^n2*(1-(1-p2a)^(m2-n2))/((1-(1-p1a)^n1)*(1-(1-p2a)^n2))), 0)
-      sub2 = ifelse(m2==0, sum((1-p2b)^n2*(1-(1-p2b)^(m2-n2))/(1-(1-p2b)^n2)), 0)
-      out = D_share(x1, x2, m1, n2, 0)+sub1+sub2
-    }else{
-      p1a = p1_hat[(x1>=1)&(x2>=1)]
-      p2a = p2_hat[(x1>=1)&(x2>=1)]
-      p1b = p1_hat[(x2==0)&(x1>=1)]
-      p2b = p2_hat[(x2==0)&(x1>=1)]
-      sub1 = ifelse((m1==0)|(m2==0), sum((1-p1a)^n1*(1-p2a)^m2*(1-(1-p1a)^(m1-n1))/((1-(1-p1a)^n1)*(1-(1-p2a)^n2))), 0)
-      sub2 = ifelse(m1==0, sum((1-p1b)^n1*(1-(1-p1b)^(m1-n1))/(1-(1-p1b)^n1)), 0)
-      out = D_share(x1, x2, n1, m2, 0)+sub1+sub2
-    }
-  })
-  D0_2 =apply(cbind(0, m2), 1, function(mm){
-    m1 = mm[1]
-    m2 = mm[2]
-    if(m1<=n1&m2<=n2){
-      out = D_share(x1, x2, m1, m2, 0)
-    }else if(m1<=n1&m2>n2){
-      p1a = p1_hat[(x1>=1)&(x2>=1)]
-      p2a = p2_hat[(x1>=1)&(x2>=1)]
-      p1b = p1_hat[(x1==0)&(x2>=1)]
-      p2b = p2_hat[(x1==0)&(x2>=1)]
-      sub1 = ifelse((m1==0)|(m2==0), sum((1-p1a)^m1*(1-p2a)^n2*(1-(1-p2a)^(m2-n2))/((1-(1-p1a)^n1)*(1-(1-p2a)^n2))), 0)
-      sub2 = ifelse(m2==0, sum((1-p2b)^n2*(1-(1-p2b)^(m2-n2))/(1-(1-p2b)^n2)), 0)
-      out = D_share(x1, x2, m1, n2, 0)+sub1+sub2
-    }else{
-      p1a = p1_hat[(x1>=1)&(x2>=1)]
-      p2a = p2_hat[(x1>=1)&(x2>=1)]
-      p1b = p1_hat[(x2==0)&(x1>=1)]
-      p2b = p2_hat[(x2==0)&(x1>=1)]
-      sub1 = ifelse((m1==0)|(m2==0), sum((1-p1a)^n1*(1-p2a)^m2*(1-(1-p1a)^(m1-n1))/((1-(1-p1a)^n1)*(1-(1-p2a)^n2))), 0)
-      sub2 = ifelse(m1==0, sum((1-p1b)^n1*(1-(1-p1b)^(m1-n1))/(1-(1-p1b)^n1)), 0)
-      out = D_share(x1, x2, n1, m2, 0)+sub1+sub2
-    }
-  })
-  D0 =apply(m, 1, function(mm){
-    m1 = mm[1]
-    m2 = mm[2]
-    if(m1<=n1&m2<=n2){
-      out = D_share(x1, x2, m1, m2, 0)
-    }else if(m1<=n1&m2>n2){
-      p1a = p1_hat[(x1>=1)&(x2>=1)]
-      p2a = p2_hat[(x1>=1)&(x2>=1)]
-      p1b = p1_hat[(x1==0)&(x2>=1)]
-      p2b = p2_hat[(x1==0)&(x2>=1)]
-      sub1 = ifelse((m1==0)|(m2==0), sum((1-p1a)^m1*(1-p2a)^n2*(1-(1-p2a)^(m2-n2))/((1-(1-p1a)^n1)*(1-(1-p2a)^n2))), 0)
-      sub2 = ifelse(m2==0, sum((1-p2b)^n2*(1-(1-p2b)^(m2-n2))/(1-(1-p2b)^n2)), 0)
-      out = D_share(x1, x2, m1, n2, 0)+sub1+sub2
-    }else{
-      p1a = p1_hat[(x1>=1)&(x2>=1)]
-      p2a = p2_hat[(x1>=1)&(x2>=1)]
-      p1b = p1_hat[(x2==0)&(x1>=1)]
-      p2b = p2_hat[(x2==0)&(x1>=1)]
-      sub1 = ifelse((m1==0)|(m2==0), sum((1-p1a)^n1*(1-p2a)^m2*(1-(1-p1a)^(m1-n1))/((1-(1-p1a)^n1)*(1-(1-p2a)^n2))), 0)
-      sub2 = ifelse(m1==0, sum((1-p1b)^n1*(1-(1-p1b)^(m1-n1))/(1-(1-p1b)^n1)), 0)
-      out = D_share(x1, x2, n1, m2, 0)+sub1+sub2
-    }
-  })
-
+  
+  m2tmp <-m2[m2>n2]
+  m2tmp_s<-m2tmp-n2
+  mmext<-cbind(0,m2tmp_s)
+  mm<-cbind(0,n2)
+  
+  q0_2_ext<-Dq_in(x1,x2,mm,0)
+  #  h0_2_ext<-Dq0_2_ext(x1,x2,p1_hat,p2_hat,n1,n2,mmext)
+  print(paste("start  q0_2_ext_cpp",Sys.time())) 
+  h0_2_ext_cpp<-Dq0_2_ext_cpp(p1_hat,p2_hat,n1,n2,mmext)
+  # h0_2_ext_new<-Dq0_2_ext_new(x1,x2,0,p2_hat,n1,n2,mmext)
+  q0_2_ext<-q0_2_ext+h0_2_ext_cpp
+  
+  q0_2<-c(q0_2_in,q0_2_ext)
+  
+  #q1_2
+  mm<-cbind(0,n2)
+  q1_2_ext<-Dq_in(x1,x2,mm,1)
+  
+  m2tmp <-m2[m2>n2]
+  mmext<-cbind(0,m2tmp)
+  print(paste("start  q1_2_ext",Sys.time())) 
+  h1_2_ext = Dq1_ext(x1,x2,p1_hat,p2_hat,n1,n2,mmext)
+  q1_2_ext<-q1_2_ext*h1_2_ext
+  q1_2<-c(q1_2_in,q1_2_ext)
+  
+  #q=2 in and ext using same formular
+  mm<-cbind(0,m2)
+  print(paste("start  q2_2",Sys.time())) 
+  q2_2<-Dq2(x1,x2,mm,n1,n2)
+  
+  
+  
+  
+  ####mix q=0,1,2##################################################  
+  mm<-cbind(m1,m2)
+  
+  print(paste("start  q2_mix",Sys.time())) 
+  q2_mix<-Dq2(x1,x2,mm,n1,n2)
+  
+  m1tmp<-m1[m2<=n2]
+  m2tmp<-m2[m2<=n2]
+  mm<-cbind(m1tmp,m2tmp)
+  
+  print(paste("start  q0_mix_in q1_mix_in ",Sys.time())) 
+  q0_mix_in<-Dq_in(x1,x2,mm,0)
+  q1_mix_in<-Dq_in(x1,x2,mm,1)
+  
+  
+  m1tmp<-m1[m2>n2]
+  m2tmp <-m2[m2>n2]
+  m2tmp_s<-m2tmp-n2
+  mmexts<-cbind(m1tmp,m2tmp_s)
+  mm<-cbind(m1tmp,n2)
+  
+  q0_mix_ext<-Dq_in(x1,x2,mm,0)
+  
+  print(paste("start  h0_mix_ext_cpp  ",Sys.time())) 
+  h0_mix_ext_cpp<-Dq0_2_ext_cpp(p1_hat,p2_hat,n1,n2,mmexts)
+  # h0_2_ext_new<-Dq0_2_ext_new(x1,x2,0,p2_hat,n1,n2,mmext)
+  q0_mix_ext<-q0_mix_ext+h0_mix_ext_cpp
+  #NumericVector pi1, NumericVector pi2, int m1, int m2s, int n1, int n2
+  q0_mix<-c(q0_mix_in,q0_mix_ext)
+  
+  m1tmp<-m1[m2>n2]
+  m2tmp <-m2[m2>n2]
+  mmext<-cbind(m1tmp,m2tmp)
+  
+  mm<-cbind(m1tmp,n2)
+  q1_mix_ext<-Dq_in(x1,x2,mm,1)
+  print(paste("start  h1_mix_ext  ",Sys.time())) 
+  h1_mix_ext<-Dq1_ext(x1,x2,p1_hat,p2_hat,n1,n2,mmext)
+  q1_mix_ext1<-q1_mix_ext*h1_mix_ext
+  q1_mix<-c(q1_mix_in,q1_mix_ext1)
+  
+  
+  #q=2 in and ext using same formular
+  mm<-cbind(m1,m2)
+  q2_mix<-Dq2(x1,x2,mm,n1,n2)
+  
+  output0 = cbind(m1, m2, q0_1, q0_2, q0_mix)
+  output1 = cbind(m1, m2, q1_1, q1_2, q1_mix)
+  output2 = cbind(m1, m2, q2_1, q2_2, q2_mix)
+  colnames(output0) = c("m1", "m2", paste(colnames(data1)), "Mixed")
+  colnames(output1) = c("m1", "m2", paste(colnames(data1)), "Mixed")
+  colnames(output2) = c("m1", "m2", paste(colnames(data1)), "Mixed")
+  
+  ###########q0_ana: # q=0 unique and share#############yhc code#######
+  # D0 = round(D0, 3)
+  print(paste("start  q0_ana  ",Sys.time())) 
   m1_i = unique(m1[m1 >= n1-n2])
   m2_i = unique(n1 - m1_i)
   datash = data1[(data1[,1]>0 & data1[,2]>0), , drop=F]
   dataun1 = data1[(data1[,1]>0 & data1[,2]==0), , drop=F]
   dataun2 = data1[(data1[,1]==0 & data1[,2]>0), , drop=F]
   un1 = sapply(m1_i,function(i){
-    sum(sh_un_abun(xi = dataun1[,1], n = n1, m = i))
+    sum(un_abun(xi = dataun1[,1], n = n1, m = i))
   })
   un2 = sapply(m2_i,function(i){
-    sum(sh_un_abun(xi = dataun2[,2], n = n2, m = i))
-  })
-  sh1 = sapply(m1_i,function(i){
-    sum(sh_un_abun(xi = datash[,1], n = n1, m = i))
-  })
-  sh2 = sapply(m2_i,function(i){
-    sum(sh_un_abun(xi = datash[,2], n = n2, m = i))
+    sum(un_abun(xi = dataun2[,2], n = n2, m = i))
   })
   sh12 = sapply(1:length(m1_i),function(i){
-    sum(sh_sh_abun(xi1 = datash[,1],xi2 = datash[,2], n1 = n1,m1 =  m1_i[i],
-                   n2 = n2, m2 = m2_i[i]))
+    sum(sh_abun(xi1 = datash[,1],xi2 = datash[,2], n1 = n1,m1 =  m1_i[i],
+                n2 = n2, m2 = m2_i[i]))
   })
-  sh = sh1 + sh2 -sh12
-  total = un1 + un2 + sh
+  # sh = sh1 + sh2 -sh12
+  # total = un1 + un2 + sh
+  # n1 n2 need adjustment
+  
+  ##########prof. Chao's new paper doesn't mention it################################################
+  # if(max(m2)>n2){
+  #   m1_e <- unique(m1[m1 < n1-n2])
+  #   m2_e <- unique(n1 - m1_e)
+  #   psh1 <-  p[(data1[,1]>0 & data1[,2]>0) , 1]
+  #   psh2 <-  p[(data1[,1]>0 & data1[,2]>0) , 2]
+  #   pun1 <-  p[(data1[,1]>0 & data1[,2]==0) , 1]
+  #   pun2 <-  p[(data1[,1]==0 & data1[,2]>0) , 2]
+  #   ex <- sapply(1:length(m1_e), function(i){
+  #     #sh12_ex_1 <- (1- exp(lchoose(n1 - datash[,1], m1_e[i]) - lchoose(n1, m1_e[i])) ) %>% sum
+  #     sh12_ex_2 <- ( (1-psh1)^m1_e[i] * (1-psh2)^n2 * (1-(1-psh2)^(m2_e[i]-n2))  / (1-(1-psh1)^n1) / (1-(1-psh2)^n2) ) %>% sum()
+  #     sh12_ex <- length(psh1) + sh12_ex_2
+  #     
+  #     un1_ex <- (1- exp(lchoose(n1 - dataun1[,1], m1_e[i])-lchoose(n1, m1_e[i])) ) %>% sum
+  #     
+  #     un2_ex <- ( ((1-pun2)^n2 - (1-pun2)^m2_e[i])  / (1-(1-pun2)^n2) )%>% sum() + length(pun2)
+  #     
+  #     rbind(un1_ex, un2_ex, sh12_ex)
+  #     
+  #   })
+  #   un1 <- c(un1, un1[length(sh12)], ex[1,])
+  #   un2 <- c(un2, un2[length(sh12)], ex[2,])
+  #   sh12 <- c(sh12, sh12[length(sh12)], ex[3,])
+  #   m1_i <- m1
+  #   m2_i <- m2
+  # }
   q0_ana = data.frame(m1 = m1_i, m2 = m2_i,
                       q0_un1 = un1, q0_un2 = un2,
-                      q0_sh = sh)
+                      q0_sh = sh12)
   colnames(q0_ana)[3:5] = c(paste("Unique to",colnames(data1)[1]),
                             paste("Unique to",colnames(data1)[2]),
-                            "Share")
-  q0_ana = as.matrix(q0_ana)
-
-  D1 = apply(m, 1, function(mi)D1_f(xi = x1, yi = x2, m1 = mi[1], m2 = mi[2], p1_hat = p1_hat, p2_hat = p2_hat))
-  D1_1 = apply(cbind(m1, 0), 1, function(mi)D1_f(xi = x1, yi = x2, m1 = mi[1], m2 = 0, p1_hat = p1_hat, p2_hat = p2_hat))
-  D1_2 = apply(cbind(0, m2), 1, function(mi)D1_f(xi = x1, yi = x2, m1 = 0, m2 = mi[2], p1_hat = p1_hat, p2_hat = p2_hat))
-  x11 =x1
-  x22 =x2
-  x1 = x1[rowSums(data1)>0]
-  x2 = x2[rowSums(data1)>0]
-  D2.f  <- function(m){
-    m1 = m[1]
-    m2 = m[2]
-    D2 = 1/(m1+m2)+sum(x1*(x1-1)/(n1*(n1-1)))*m1*(m1-1)/(m1+m2)^2+sum(x2*(x2-1)/(n2*(n2-1)))*m2*(m2-1)/(m1+m2)^2+2*sum(x1*x2/(n1*n2))*m1*m2/(m1+m2)^2
-    ifelse(m1==0&m2==0, 0, 1/D2)
-  }
-  D2 = apply(m, 1, D2.f)
-  D2_1 = apply(cbind(m1, 0), 1, D2.f)
-  D2_2 = apply(cbind(0, m2), 1, D2.f)
+                            "Share")  
   
-  output0 = cbind(m1, m2, D0_1, D0_2, D0)
-  output1 = cbind(m1, m2, D1_1, D1_2, D1)
-  output2 = cbind(m1, m2, D2_1, D2_2, D2)
-  
-  colnames(output0) = c("m1", "m2", paste(colnames(data1)), "Mixed")
-  colnames(output1) = c("m1", "m2", paste(colnames(data1)), "Mixed")
-  colnames(output2) = c("m1", "m2", paste(colnames(data1)), "Mixed")
   
   list(q0 = output0, q1 = output1, q2 = output2, q0_ana = q0_ana)
-
+  
+  
+  
 }
 
 ####################################################################################

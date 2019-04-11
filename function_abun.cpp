@@ -5,129 +5,15 @@ using namespace Rcpp;
 // You can include R code blocks in C++ files processed with sourceCpp
 // (useful for testing and development). The R code will be automatically 
 // run after the compilation.
-//
+// this is created by hsiaotung at 201903
 
-// [[Rcpp::export]]
-double Dm(int m, NumericVector Xi) {
-  int D = sum(Xi>0);
-  int n = sum(Xi);
-  double out;
-  NumericVector X = Xi[Xi>0];
-  if(m <= n){
-    int index1 = X.size();
-    NumericVector fkhat(index1);
-    for (int k = 0; k < index1; k++){
-      fkhat[k] =  exp(Rf_lchoose(n - X[k], m) - Rf_lchoose(n, m)) ;
-    }
-    out = D - sum(fkhat);
-  }else{
-    
-    int f1 = sum(X==1);
-    
-    if(f1 == 0){
-      out = D;
-    }else{
-      int f2 = sum(X==2);
-      double f0_hat;
-      if(f2 > 0){
-        f0_hat = (n-1)*pow(f1, 2)/(n*2*f2);
-      }else{
-        f0_hat = (n-1)*f1*(f1-1)/(2*n);
-      }
-      out = D + round(f0_hat)*(1-pow((1-f1/(n*f0_hat+f1)),(m-n)));
-    }
-    
-  }
-  return out ;
-}
-
-
-// [[Rcpp::export]]
-double Dmm(int m1,int m2, NumericVector X1i, NumericVector X2i, NumericVector p1_hat, NumericVector p2_hat) {
-  int n1 = sum(X1i);
-  int n2 = sum(X2i);
-  NumericVector X_share = X1i + X2i;
-  NumericVector X_sharen = X_share[X_share>0];
-  NumericVector X1i_share = X1i[X_share>0];
-  NumericVector X2i_share = X2i[X_share>0];
-  // NumericVector X1i_share = X1i[1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0))];
-  // NumericVector X2i_share = X2i[1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0))];
-  int index1 = X_sharen.size();
-  // int index1 =sum(1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0)));
-  double output;
-  NumericVector fkhat(index1);
-  if((m1 <= n1) & (m2 <= n2)){
-    for (int k = 0; k < index1; k++){
-      fkhat[k] =  (1-exp(Rf_lchoose(n1 - X1i_share[k], m1) - Rf_lchoose(n1, m1)))*(1-exp(Rf_lchoose(n2 - X2i_share[k], m2) - Rf_lchoose(n2, m2))) ;
-    }
-    output = sum(fkhat);
-  }else{
-    p1_hat = p1_hat[(X_share>0)];
-    p2_hat = p2_hat[(X_share>0)];
-    // p1_hat = p1_hat[1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0))];
-    // p2_hat = p2_hat[1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0))];
-    if((m1 <= n1) & (m2 > n2)){
-      
-      for (int k = 0; k < index1; k++){
-        fkhat[k] =  (1-exp(Rf_lchoose(n1 - X1i_share[k], m1) - Rf_lchoose(n1, m1)))*(1-exp(Rf_lchoose(n2 - X2i_share[k], n2) - Rf_lchoose(n2, n2))) ;
-      }
-      output = sum(fkhat) + sum(pow(1-p1_hat, m1)*pow(1-p2_hat, n2)*(1-pow((1-p2_hat), (m2-n2)))/(1-pow(1-p1_hat, n1)*pow(1-p2_hat, n2)));
-    
-    }else{
-      for (int k = 0; k < index1; k++){
-        fkhat[k] =  (1-exp(Rf_lchoose(n1 - X1i_share[k], n1) - Rf_lchoose(n1, n1)))*(1-exp(Rf_lchoose(n2 - X2i_share[k], m2) - Rf_lchoose(n2, m2))) ;
-      }
-      output = sum(fkhat) +  sum(pow(1-p1_hat, n1)*pow(1-p2_hat, m2)*(1-pow((1-p1_hat), (m1-n1)))/(1-pow(1-p1_hat, n1)*pow(1-p2_hat, n2)));
-    
-    }
-  }
-  return(output);
-}
-
-// [[Rcpp::export]]
-double Dmm_share(int m1,int m2, NumericVector X1i, NumericVector X2i, NumericVector p1_hat, NumericVector p2_hat) {
-  int n1 = sum(X1i);
-  int n2 = sum(X2i);
-  LogicalVector X_share = (X1i>=1) & (X2i>=1);
-  NumericVector X1i_share = X1i[X_share];
-  NumericVector X2i_share = X2i[X_share];
-  // NumericVector X1i_share = X1i[1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0))];
-  // NumericVector X2i_share = X2i[1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0))];
-  int index1 = sum(X_share);
-  // int index1 =sum(1-(X1i==0)-(X2i==0)+((X1i==0)&(X2i==0)));
-  double output;
-  NumericVector fkhat(index1);
-  if((m1 <= n1) & (m2 <= n2)){
-    for (int k = 0; k < index1; k++){
-      fkhat[k] =  (1-exp(Rf_lchoose(n1 - X1i_share[k], m1) - Rf_lchoose(n1, m1)))*(1-exp(Rf_lchoose(n2 - X2i_share[k], m2) - Rf_lchoose(n2, m2))) ;
-    }
-    output = sum(fkhat);
-  }else{
-    p1_hat = p1_hat[(X_share>0)];
-    p2_hat = p2_hat[(X_share>0)];
-    
-    if((m1 <= n1) & (m2 > n2)){
-      
-      for (int k = 0; k < index1; k++){
-        fkhat[k] =  (1-exp(Rf_lchoose(n1 - X1i_share[k], m1) - Rf_lchoose(n1, m1)))*(1-exp(Rf_lchoose(n2 - X2i_share[k], n2) - Rf_lchoose(n2, n2))) ;
-      }
-      output = sum(fkhat) + sum(pow(1-p1_hat, m1)*pow(1-p2_hat, n2)*(1-pow((1-p2_hat), (m2-n2)))/(1-pow(1-p1_hat, n1)*pow(1-p2_hat, n2)));
-      
-    }else{
-      for (int k = 0; k < index1; k++){
-        fkhat[k] =  (1-exp(Rf_lchoose(n1 - X1i_share[k], n1) - Rf_lchoose(n1, n1)))*(1-exp(Rf_lchoose(n2 - X2i_share[k], m2) - Rf_lchoose(n2, m2))) ;
-      }
-      output = sum(fkhat) +  sum(pow(1-p1_hat, n1)*pow(1-p2_hat, m2)*(1-pow((1-p1_hat), (m1-n1)))/(1-pow(1-p1_hat, n1)*pow(1-p2_hat, n2)));
-      
-    }
-  }
-  return(output);
-}
 
 double Hypergeometric(int K, int k, int N,  int n) {
   return exp(Rf_lchoose(K,k)+Rf_lchoose(N-K,n-k)-Rf_lchoose(N,n));
   //return Rf_choose(K,k)*Rf_choose(N-K,n-k)/Rf_choose(N,n);
 }
+
+
 
 double fk(int k1, int k2, int m1, int m2, NumericVector x1, NumericVector y1){
   int n1 = sum(x1);
@@ -145,28 +31,37 @@ double fk(int k1, int k2, int m1, int m2, NumericVector x1, NumericVector y1){
   return output;
 }
 
-
-//for specially q
+// this is D_share by HsiaoTung to improve speed
 // [[Rcpp::export]]
 double D_share(NumericVector xi,NumericVector yi,double m1, double m2,double q){
   //NumericVector xi = X(_,0);
   //NumericVector yi = X(_,1);
   double fk1k2 = 0;
   double output = 0;
+  
+  double max1 = max(xi);
+  double max2 = max(yi);
+  double m1loop = std::min(m1,max1);
+  double m2loop = std::min(m2,max2);
+  
+  
   if(q==1){
-    for(int k1 = 0; k1<(m1+1) ; k1++){
-      for(int k2 = 0; k2<(m2+1) ; k2++){
+    for(int k1 = 0; k1<(m1loop+1) ; k1++){
+      for(int k2 = 0; k2<(m2loop+1) ; k2++){
         if((k1 == 0) & (k2 == 0)){
           fk1k2 = fk1k2; 
         }else{
           fk1k2 = fk1k2 -((k1+k2)/(m1+m2))*log((k1+k2)/(m1+m2))*fk(k1, k2, m1, m2, xi, yi);
         }
       }
+      
       output = exp(fk1k2);
+      
     }
+    if ((m1loop==0) & (m2loop==0)) output=1;
   }else{
-    for(int k1 = 0; k1<(m1+1) ; k1++){
-      for(int k2 = 0; k2<(m2+1) ; k2++){
+    for(int k1 = 0; k1<(m1loop+1) ; k1++){
+      for(int k2 = 0; k2<(m2loop+1) ; k2++){
         if((k1 == 0) & (k2 == 0)){
           fk1k2 = fk1k2; 
         }else{
@@ -175,268 +70,306 @@ double D_share(NumericVector xi,NumericVector yi,double m1, double m2,double q){
       }
     }
     output = pow(fk1k2, 1/(1-q));
+    if ((m1loop==0) & (m2loop==0)) output=0;
   }
   return output;
 }
 
 
-double D_share_share(NumericVector xi,NumericVector yi,double m1, double m2,double q){
-  //NumericVector xi = X(_,0);
-  //NumericVector yi = X(_,1);
-  double fk1k2 = 0;
+
+double h0_cpp(double pi1, double pi2, int m1,  int m2s, int n2 ){
   double output = 0;
-  if(q==1){
-    for(int k1 = 0; k1<(m1+1) ; k1++){
-      for(int k2 = 0; k2<(m2+1) ; k2++){
-        if(!((k1 >= 1) & (k2 >= 1))){
-          fk1k2 = fk1k2; 
-        }else{
-          fk1k2 = fk1k2 -((k1+k2)/(m1+m2))*log((k1+k2)/(m1+m2))*fk(k1, k2, m1, m2, xi, yi);
-        }
-      }
-      output = exp(fk1k2);
-    }
-  }else{
-    for(int k1 = 0; k1<(m1+1) ; k1++){
-      for(int k2 = 0; k2<(m2+1) ; k2++){
-        if(!((k1 >= 1) & (k2 >= 1))){
-          fk1k2 = fk1k2; 
-        }else{
-          fk1k2 = fk1k2 + pow(((k1+k2)/(m1+m2)), q)*fk(k1, k2, m1, m2, xi, yi);
-        }
-      }
-    }
-    output = pow(fk1k2, 1/(1-q));
-  }
+  output = pow((1-pi1),m1)*pow((1-pi2),n2)*(1-pow((1-pi2),m2s));
   return output;
 }
 
 // [[Rcpp::export]]
-double Efk_q1(int m1, int m2, int k1, int k2,NumericVector p1_hat, NumericVector p2_hat,NumericVector xi, NumericVector yi){
-  double  output; 
-  int n1 = sum(xi);
-  int n2 = sum(yi);
-  
-  NumericVector sub11;
-  NumericVector sub12;
-  NumericVector sub13;
-  
-  double sub1;
-  double sub2;
-  double sub3;
-  
-  sub11 = exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)+Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log((1-pow(1-p1_hat, n1))*(1-pow(1-p2_hat, n2))));
-  sub12 = exp(Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log((1-pow(1-p2_hat, n2))));
-  sub13 = exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)-log((1-pow(1-p1_hat, n1))));
-  sub11 = sub11[((xi>=1)&(yi>=1))];
-  if(k1==0){
-    if(m1==0){
-      sub12 = sub12[((yi>=1))];
-    }else{sub12 = sub12[((xi==0)&(yi>=1))];}
-    }else{sub12 = 0;}
-  if(k2==0){
-    if(m2==0){
-      sub13 = sub13[((xi>=1))];
-    }else{
-      sub13 = sub13[((xi>=1)&(yi==0))];
+double h0_hat_cpp(NumericVector pi1, NumericVector pi2, int m1, int m2s, int n1, int n2){
+  double output_all= 0; 
+  //  double output_sh = 0;
+  if(m1>0){
+    NumericVector pi1_tmp = pi1[(pi1>0) & (pi2>0)];
+    NumericVector pi2_tmp = pi2[(pi1>0) & (pi2>0)];
+    double sumsh = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      // sumsh = sumsh +  h0(pi1_tmp[i],pi2_tmp[i],m1,m2s,n2)/(1-pow(1-pi1_tmp[i], n1))/(1-pow(1-pi2_tmp[i], n2));
+      sumsh = sumsh +  h0_cpp(pi1_tmp[i],pi2_tmp[i],m1,m2s,n2)/((1-pow(1-pi1_tmp[i], n1))*(1-pow(1-pi2_tmp[i], n2)));
     }
-  }else{sub13 = 0;}
-  sub1 = sum(sub11);
-  sub2 = sum(sub12);
-  sub3 = sum(sub13);
-  if(m1==0){
-    output = sub2;  
-  }else if(m2==0){
-    output = sub3;
-  }else{
-    sub1 = 0;
-    output = sub1+sub2+sub3;
-  }
-  
-  return output;
-}
-  
-// [[Rcpp::export]]
-double D1_f(NumericVector xi,NumericVector yi,double m1, double m2, NumericVector p1_hat, NumericVector p2_hat){
-  int n1 = sum(xi);
-  int n2 = sum(yi);
-  double output;
-  NumericVector X_share = xi + yi;
-  double sub1 = 0;
-  double sub2 = 0;
-  
-  if((m1 <= n1) & (m2 <= n2)){
-    output = D_share(xi, yi, m1, m2, 1);
-  }else{
-    if((m1 <= n1) & (m2 > n2)){
-      for(int k1 = 0; k1 < (m1+1); k1++){
-        for(int k2 = 0; k2 < (m2+1); k2++){
-          if((k1==0)&(k2==0)){
-            sub1 = sub1;
-          }else{
-            sub1 = sub1 -(k1+k2)/(m1+m2)*log((k1+k2)/ (m1+m2))*Efk_q1(m1, m2, k1, k2, p1_hat, p2_hat, xi, yi);
-          }
-        }
-      }
-      for(int k1 = 0; k1 < (m1+1); k1++){
-        for(int k2 = 0; k2 < (n2+1); k2++){
-          if((k1==0)&(k2==0)){
-            sub2 = sub2;
-          }else{
-            sub2 = sub2 -(k1+k2)/(m1+n2)*log((k1+k2)/ (m1+n2))*Efk_q1(m1, n2, k1, k2, p1_hat, p2_hat, xi, yi); 
-          }
-        }
-      }
-      output = D_share(xi, yi, m1, n2, 1)*exp(sub1-sub2);
-    }else{
-      for(int k2 = 0; k2 < (m2+1); k2++){
-        for(int k1 = 0; k1 < (m1+1); k1++){
-          if((k1==0)&(k2==0)){
-            sub1 = sub1;
-          }else{
-            sub1 = sub1 -(k1+k2)/(m1+m2)*log((k1+k2)/(m1+m2))*Efk_q1(m1, m2, k1, k2, p1_hat, p2_hat, xi, yi);
-              }
-        }
-      }
-      for(int k2 = 0; k2 < (m2+1); k2++){
-        for(int k1 = 0; k1 < (n1+1); k1++){
-          if((k1==0)&(k2==0)){
-            sub2 = sub2;
-          }else{
-            sub2 = sub2 -(k1+k2)/(n1+m2)*log((k1+k2)/(n1+m2))*Efk_q1(n1, m2, k1, k2, p1_hat, p2_hat, xi, yi);  
-          }
-        }
-      }
-      output = D_share(xi, yi, n1, m2, 1) * exp(sub1)/exp(sub2);
-      //output = sub1;
-    }
-  }
     
-  
+    pi1_tmp = pi1[(pi1==0) & (pi2>0)];
+    pi2_tmp = pi2[(pi1==0) & (pi2>0)];
+    double sumx0 = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumx0 = sumx0 +  h0_cpp(0,pi2_tmp[i],m1,m2s,n2)/(1-pow(1-pi2_tmp[i], n2));
+    }
+    output_all = sumsh+sumx0;
+    //    output_sh = sumsh;
+  }
+  else if(m1 == 0){
+    NumericVector pi2_tmp = pi2[(pi2>0)];
+    double sum2 = 0;
+    for(int i=0; i < pi2_tmp.size(); i++){
+      sum2 = sum2 + h0_cpp(0,pi2_tmp[i],0,m2s,n2)/(1-pow(1-pi2_tmp[i], n2));
+    }
+    output_all = sum2;
+    //    output_sh = sum2;
+  }
+  //  NumericVector output = NumericVector::create(output_all, output_sh);
+  double output = output_all;
   return output;
 }
 
-// [[Rcpp::export]]
-NumericVector D1_f_share(NumericVector xi,NumericVector yi,double m1, double m2, NumericVector p1_hat, NumericVector p2_hat){
-  int n1 = sum(xi);
-  int n2 = sum(yi);
-  double output_1;
-  double output_2;
-  NumericVector X_share = xi + yi;
-  double sub1_1 = 0;
-  double sub2_1 = 0;
-  double sub1_2 = 0;
-  double sub2_2 = 0;
-  NumericVector sub3 = 0;
-  if((m1 <= n1) & (m2 <= n2)){
-    output_1 = D_share_share(xi, yi, m1, m2, 1);
-    output_2 = D_share_share(xi, yi, m1, m2, 2);
-  }else{
-    if((m1 <= n1) & (m2 > n2)){
-      for(int k1 = 0; k1 < (m1+1); k1++){
-        for(int k2 = 0; k2 < (m2+1); k2++){
-          if(!((k1>=1) & (k2>=1))){
-            sub1_1 = sub1_1;
-            sub1_2 = sub1_2;
-          }else{
-            sub3 = exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)+Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log((1-pow(1-p1_hat, n1))*(1-pow(1-p2_hat, n2))));
-            sub3 = sub3[((xi>=1)&(yi>=1))];
-            sub1_1 = sub1_1 -(k1+k2)/(m1+m2)*log((k1+k2)/ (m1+m2))*sum(sub3);
-            sub1_2 = sub1_2 + pow(((k1+k2)/(m1+m2)),2)*sum(sub3);
-            
-          }
-        }
-        
-      }
-      
-      for(int k1 = 0; k1 < (m1+1); k1++){
-        for(int k2 = 0; k2 < (n2+1); k2++){
-          if(!((k1>=1) & (k2>=1))){
-            sub2_1 = sub2_1;
-            sub2_2 = sub2_2;
-          }else{
-            sub3 = exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)+Rf_lchoose(n2, k2)+k2*log(p2_hat)+(n2-k2)*log(1-p2_hat)-log((1-pow(1-p1_hat, n1))*(1-pow(1-p2_hat, n2))));
-            sub3 = sub3[((xi>=1)&(yi>=1))];
-            sub2_1 = sub2_1 -(k1+k2)/(m1+n2)*log((k1+k2)/ (m1+n2))*sum(sub3); 
-            sub2_2 = sub2_2 + pow(((k1+k2)/(m1+n2)), 2)*sum(sub3);
-          }
-        }
-      }
-      
-        output_1 = D_share_share(xi, yi, m1, n2, 1)*exp(sub1_1-sub2_1);
-        output_2 = D_share_share(xi, yi, m1, n2, 2)*pow(sub1_2, 1/(1-2))/pow(sub2_2, 1/(1-2));
-    }else{
-      for(int k2 = 0; k2 < (m2+1); k2++){
-        for(int k1 = 0; k1 < (m1+1); k1++){
-          if(!((k1>=1) & (k2>=1))){
-            sub1_1 = sub1_1;
-            sub1_2 = sub1_2;
-          }else{
-            sub3 = exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)+Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log((1-pow(1-p1_hat, n1))*(1-pow(1-p2_hat, n2))));
-            sub3 = sub3[((xi>=1)&(yi>=1))];
-            sub1_1 = sub1_1 -(k1+k2)/(m1+m2)*log((k1+k2)/ (m1+m2))*sum(sub3); 
-            sub1_2 = sub1_2 + pow(((k1+k2)/(m1+m2)), 2)*sum(sub3) ;
-            
-          }
-        }
-      }
-      for(int k2 = 0; k2 < (m2+1); k2++){
-        for(int k1 = 0; k1 < (n1+1); k1++){
-          if(!((k1>=1) & (k2>=1))){
-            sub2_1 = sub2_1;
-            sub2_2 = sub2_2;
-          }else{
-            sub3 = exp(Rf_lchoose(n1, k1)+k1*log(p1_hat)+(n1-k1)*log(1-p1_hat)+Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log((1-pow(1-p1_hat, n1))*(1-pow(1-p2_hat, n2))));
-            sub3 = sub3[((xi>=1)&(yi>=1))];
-            sub2_1 = sub2_1 -(k1+k2)/(n1+m2)*log((k1+k2)/ (n1+m2))*sum(sub3); 
-            sub2_2 = sub2_2 + pow(((k1+k2)/(n1+m2)), 2)*sum(sub3) ;
-            
-          }
-        }
-      }
-        output_1 = D_share_share(xi, yi, n1, m2, 1) * exp(sub1_1)/exp(sub2_1);
-        output_2 = D_share_share(xi, yi, n1, m2, 2) * pow(sub1_2, 1/(1-2))/pow(sub2_2, 1/(1-2));
-      //output = sub1;
-    }
+
+
+
+
+//20190326 new
+
+double Efk_q1_new(double pi1, double pi2,int m1,int m2,int k1,int k2){
+  double result;
+  if((pi1 == 0) & (k1==0)){
+    result = Rf_dbinom(k2, m2 , pi2, 0);
+    
+  }
+  else if ((pi2 == 0) & (k2==0)){
+    result = Rf_dbinom(k1, m1 , pi1, 0);
+  }
+  else{
+    result = Rf_dbinom(k1, m1 , pi1, 0)*Rf_dbinom(k2, m2 , pi2, 0);
+  }
+  if((k1 == 0) & (k2==0)){
+    result = 0;
   }
   
   
-  return NumericVector::create(output_1,output_2);
+  return result;
 }
 
 
-// [[Rcpp::export]]
-double D0_f(NumericVector xi,NumericVector yi,double m1, double m2, NumericVector p1_hat, NumericVector p2_hat){
-  int n1 = sum(xi);
-  int n2 = sum(yi);
-  double output;
-  // NumericVector X_share = xi + yi;
-  double sub1 = 0;
+//20190326 to test differenct subfunction for choose and dbinom
+
+double Efk_q1_new_choose(double pi1, double pi2,int m1,int m2,int k1,int k2){
+  double result;
+  if((pi1 == 0) & (k1==0)){
+    //result = Rf_dbinom(k2, m2 , pi2, 0);
+    result=exp(Rf_lchoose(m2,k2)+k1*log(pi2)+(m2-k2)*(1-pi2));
+    
+  }
+  else if ((pi2 == 0) & (k2==0)){
+    //result = Rf_dbinom(k1, m1 , pi1, 0);
+    result=exp(Rf_lchoose(m1,k1)+k1*log(pi1)+(m1-k1)*(1-pi1));
+  }
+  else{
+    //result = Rf_dbinom(k1, m1 , pi1, 0)*Rf_dbinom(k2, m2 , pi2, 0);
+    result=exp(Rf_lchoose(m1,k1)+k1*log(pi1)+(m1-k1)*(1-pi1)+Rf_lchoose(m2,k2)+k1*log(pi2)+(m2-k2)*(1-pi2));
+  }
+  if((k1 == 0) & (k2==0)){
+    result = 0;
+  }
   
-  if((m1 <= n1) & (m2 <= n2)){
-    output = D_share(xi, yi, m1, m2, 0);
-  }else{
-    if((m1 <= n1) & (m2 > n2)){
-      for(int k1 = 0; k1 < (m1+1); k1++){
-        for(int k2 = (n2+1); k2 < (m2+1); k2++){
-          sub1 = sub1 + sum(exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)+Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log(1-pow(1-p1_hat, n1)*pow(1-p2_hat, n2)))); 
-        }
-      }
-      output = D_share(xi, yi, m1, n2, 0) + sub1;
-    }else{
-      for(int k2 = 0; k2 < (m2+1); k2++){
-        for(int k1 = (n1+1); k1 < (m1+1); k1++){
-          sub1 = sub1 + sum(exp(Rf_lchoose(m1, k1)+k1*log(p1_hat)+(m1-k1)*log(1-p1_hat)+Rf_lchoose(m2, k2)+k2*log(p2_hat)+(m2-k2)*log(1-p2_hat)-log(1-pow(1-p1_hat, n1)*pow(1-p2_hat, n2)))); 
-        }
-      }
-      output = D_share(xi, yi, n1, m2, 0) + sub1;
+  
+  return result;
+}
+
+
+
+
+
+double h1(double pi1, double pi2, double m1, double m2, double n1, double n2,int s){
+  
+  double tmp1 = 0;
+  double tmp2 = 0;
+  
+  for(int k2=s; k2 <= m2; k2++){
+    for(int k1=s; k1 <= m1; k1++){
+      if((k1 == 0) & (k2 == 0)){ tmp1 = 0; }
+      else{ tmp1 = tmp1 + (k1+k2)/(m1+m2)*log((k1+k2)/(m1+m2))*Efk_q1_new(pi1,pi2,m1,m2,k1,k2); }
     }
   }
+  tmp1 = -tmp1;
+  
+  for(int k2=s; k2 <= n2; k2++){
+    for(int k1=s; k1 <= m1; k1++){
+      if((k1 == 0) & (k2 == 0)){ tmp2 = 0; }
+      else{ tmp2 = tmp2 + (k1+k2)/(m1+n2)*log((k1+k2)/(m1+n2))*Efk_q1_new(pi1,pi2,m1,n2,k1,k2); }
+    }
+  }
+  tmp2 = -tmp2;
+  // Rcout << "h1 function, tmp1= " << tmp1 << std::endl;
+  // Rcout << "h1 function, tmp2= " << tmp2 << std::endl;
+  double result = tmp1-tmp2;
+  return result;
+}
+
+
+
+double h1_choose(double pi1, double pi2, double m1, double m2, double n1, double n2,int s){
+  
+  double tmp1 = 0;
+  double tmp2 = 0;
+  
+  for(int k2=s; k2 <= m2; k2++){
+    for(int k1=s; k1 <= m1; k1++){
+      if((k1 == 0) & (k2 == 0)){ tmp1 = 0; }
+      else{ tmp1 = tmp1 + (k1+k2)/(m1+m2)*log((k1+k2)/(m1+m2))*Efk_q1_new_choose(pi1,pi2,m1,m2,k1,k2); }
+    }
+  }
+  tmp1 = -tmp1;
+  
+  for(int k2=s; k2 <= n2; k2++){
+    for(int k1=s; k1 <= m1; k1++){
+      if((k1 == 0) & (k2 == 0)){ tmp2 = 0; }
+      else{ tmp2 = tmp2 + (k1+k2)/(m1+n2)*log((k1+k2)/(m1+n2))*Efk_q1_new_choose(pi1,pi2,m1,n2,k1,k2); }
+    }
+  }
+  tmp2 = -tmp2;
+  // Rcout << "h1 function, tmp1= " << tmp1 << std::endl;
+  // Rcout << "h1 function, tmp2= " << tmp2 << std::endl;
+  double result = tmp1-tmp2;
+  return result;
+}
+
+
+
+double h1_assem2( double pi2,double m2, double n2){
+  
+  
+  double tmp1 = 0;
+  double tmp2 = 0;
+  
+  for(int k2=1; k2 <= m2; k2++){
+    
+    tmp1 = tmp1 + (k2)/(m2)*log((k2)/(m2))*Efk_q1_new(0,pi2,0,m2,0,k2);
+  }
+  tmp1 = -tmp1;
+  
+  for(int k2=1; k2 <= n2; k2++){
+    
+    tmp2 = tmp2 + (k2)/(n2)*log((k2)/(n2))*Efk_q1_new(0,pi2,0,n2,0,k2); 
+    
+  }
+  tmp2 = -tmp2;
+  double result = tmp1-tmp2;
+  //Rcout << "tmp1  is " << tmp1 << std::endl;
+  // Rcout << "tmp2  is " << tmp2 << std::endl;
+  //Rcout << "h1_assem2  is " << result << std::endl;
+  return result;
+}
+
+
+
+
+
+// [[Rcpp::export]]
+double h1_hat(NumericVector pi1, NumericVector pi2, NumericVector xi1, NumericVector xi2, int m1, int m2, int n1, int n2){
+  double output_all = 0;
+  //  double output_sh = 0;
+  if(m1>0){
+    NumericVector pi1_tmp = pi1[(xi1>0) & (xi2>0)];
+    NumericVector pi2_tmp = pi2[(xi1>0) & (xi2>0)];
+    double n1 = sum(xi1);
+    double n2 = sum(xi2);
+    double sumsh = 0;
+    //Rcout << "h1_hat size=" << pi1_tmp.size() << std::endl;
+    //    double sumsh_p = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumsh = sumsh +  h1(pi1_tmp[i],pi2_tmp[i],m1,m2,n1,n2,0)/(1-pow(1-pi1_tmp[i], n1))/(1-pow(1-pi2_tmp[i], n2));
+      //      sumsh_p = sumsh_p +  h1(pi1_tmp[i],pi2_tmp[i],t1,t2,UT1,UT2,T1,T2,1)/(1-pow(1-pi1_tmp[i], T1))/(1-pow(1-pi2_tmp[i], T2));
+    }
+    
+    pi1_tmp = pi1[(xi1==0) & (xi2>0)];
+    pi2_tmp = pi2[(xi1==0) & (xi2>0)];
+    double sumx0 = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumx0 = sumx0 +  h1(0,pi2_tmp[i],m1,m2,n1,n2,0)/(1-pow(1-pi2_tmp[i], n2));
+    }
+    
+    pi1_tmp = pi1[(xi1>0) & (xi2==0)];
+    pi2_tmp = pi2[(xi1>0) & (xi2==0)];
+    double sumy0 = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumy0 = sumy0 +  h1(pi1_tmp[i],0,m1,m2,n1,n2,0)/(1-pow(1-pi1_tmp[i], n1));
+    }
+    output_all = sumsh+sumx0+sumy0;
+    //    output_sh = sumsh_p;
+    
+  }
+  else if(m1 == 0){
+    NumericVector pi2_tmp = pi2[(xi2>0)];
+    //Rcout << "The value pi2_tmp is " << pi2_tmp << std::endl;
+    double sum2 = 0;
+    
+    for(int i=0; i < pi2_tmp.size(); i++){
+      
+      sum2 = sum2 +  h1_assem2(pi2_tmp[i],m2,n2)/(1-pow(1-pi2_tmp[i], n2));
+      //Rcout << "The value sum2 z is " << z << std::endl;
+    }
+    output_all = sum2;
+    //    output_sh = sum2;
+  }
+  //  NumericVector output = NumericVector::create(output_all, output_sh);
+  double output = output_all;
   return output;
 }
 
+
+
+
 // [[Rcpp::export]]
-NumericVector sh_un_abun(NumericVector xi,int n, int m){
+double h1_hat_choose(NumericVector pi1, NumericVector pi2, NumericVector xi1, NumericVector xi2, int m1, int m2, int n1, int n2){
+  double output_all = 0;
+  //  double output_sh = 0;
+  if(m1>0){
+    NumericVector pi1_tmp = pi1[(xi1>0) & (xi2>0)];
+    NumericVector pi2_tmp = pi2[(xi1>0) & (xi2>0)];
+    double n1 = sum(xi1);
+    double n2 = sum(xi2);
+    double sumsh = 0;
+    Rcout << "pi1_tmp.size " << pi1_tmp.size() << std::endl;
+    //    double sumsh_p = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumsh = sumsh +  h1_choose(pi1_tmp[i],pi2_tmp[i],m1,m2,n1,n2,0)/(1-pow(1-pi1_tmp[i], n1))/(1-pow(1-pi2_tmp[i], n2));
+      //      sumsh_p = sumsh_p +  h1(pi1_tmp[i],pi2_tmp[i],t1,t2,UT1,UT2,T1,T2,1)/(1-pow(1-pi1_tmp[i], T1))/(1-pow(1-pi2_tmp[i], T2));
+    }
+    
+    pi1_tmp = pi1[(xi1==0) & (xi2>0)];
+    pi2_tmp = pi2[(xi1==0) & (xi2>0)];
+    double sumx0 = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumx0 = sumx0 +  h1_choose(0,pi2_tmp[i],m1,m2,n1,n2,0)/(1-pow(1-pi2_tmp[i], n2));
+    }
+    
+    pi1_tmp = pi1[(xi1>0) & (xi2==0)];
+    pi2_tmp = pi2[(xi1>0) & (xi2==0)];
+    double sumy0 = 0;
+    for(int i=0; i < pi1_tmp.size(); i++){
+      sumy0 = sumy0 +  h1_choose(pi1_tmp[i],0,m1,m2,n1,n2,0)/(1-pow(1-pi1_tmp[i], n1));
+    }
+    output_all = sumsh+sumx0+sumy0;
+    //    output_sh = sumsh_p;
+    
+  }
+  else if(m1 == 0){
+    NumericVector pi2_tmp = pi2[(xi2>0)];
+    //Rcout << "The value pi2_tmp is " << pi2_tmp << std::endl;
+    double sum2 = 0;
+    
+    for(int i=0; i < pi2_tmp.size(); i++){
+      
+      sum2 = sum2 +  h1_assem2(pi2_tmp[i],m2,n2)/(1-pow(1-pi2_tmp[i], n2));
+      //Rcout << "The value sum2 z is " << z << std::endl;
+    }
+    output_all = sum2;
+    //    output_sh = sum2;
+  }
+  //  NumericVector output = NumericVector::create(output_all, output_sh);
+  double output = output_all;
+  return output;
+}
+
+
+// [[Rcpp::export]]
+NumericVector un_abun(NumericVector xi,int n, int m){
   int s = xi.size();
   NumericVector out(s, 0.0);
   
@@ -447,12 +380,14 @@ NumericVector sh_un_abun(NumericVector xi,int n, int m){
 }
 
 // [[Rcpp::export]]
-NumericVector sh_sh_abun(NumericVector xi1, NumericVector xi2, int n1, int m1, int n2, int m2){
+NumericVector sh_abun(NumericVector xi1, NumericVector xi2, int n1, int m1, int n2, int m2){
   int s = xi1.size();
   NumericVector out(s, 0.0);
   
   for(int i=0;i<s;i++){
-    out[i] = (1-exp(Rf_lchoose((n1-xi1[i]),m1)-Rf_lchoose(n1,m1)))*(1-exp(Rf_lchoose((n2-xi2[i]),m2)-Rf_lchoose(n2,m2)));
+    out[i] = (1-exp(Rf_lchoose((n1-xi1[i]),m1)-Rf_lchoose(n1,m1)) * exp(Rf_lchoose((n2-xi2[i]),m2)-Rf_lchoose(n2,m2)) );
   }
   return(out);
 }
+
+
