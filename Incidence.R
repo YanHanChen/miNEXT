@@ -31,6 +31,7 @@ library(reshape2)
 sourceCpp('function_inci.cpp')
 source('JADE.r')
 source('bootstrap_p.r')
+source('plot_function.r')
 
 #' Inci(data, allpts = FALSE, size = NULL, knots = 20 ) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
 #' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be the first column.
