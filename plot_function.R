@@ -209,7 +209,13 @@ multi.plot <- function(data, ans1, type = "abundance"){
       scale_fill_manual(values=c("black", "#C0392B","black","#3498DB","purple"),
                         breaks = c(sites[1],"Mixture",p_names[3],p_names[1],p_names[2]))
   }
-  
+
+  if(ncol(ans1[[1]]) == 8){
+    ans1[[1]] = ans1[[1]][,-ncol(ans1[[1]])]
+    ans1[[2]] = ans1[[2]][,-ncol(ans1[[2]])]
+    ans1[[3]] = ans1[[3]][,-ncol(ans1[[3]])]
+    ans1[[4]] = ans1[[4]][,-((ncol(ans1[[4]]) - 2): (ncol(ans1[[4]])))]
+  }
   samey = max(ans1[[2]][,-c(1,2)])
   p0 = draw.f_Div(data1,ans1[[1]])+ggtitle("q=0, species richness")+theme(plot.title = element_text(size = 20, face = "bold"))
   p1 = draw.f_Div(data1,ans1[[2]])+ggtitle("q=1")+theme(plot.title = element_text(size = 20, face = "bold"))
