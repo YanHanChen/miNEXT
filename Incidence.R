@@ -225,8 +225,10 @@ Incidence <- function(data, allpts = FALSE, size = NULL, knots = 20, nboots = 0)
     nT2 <- data[1,2]
     datap = data[-1,]
 
-    p1_est = boot_p_inc(data[,1])
-    p2_est = boot_p_inc(data[,2])
+    p1_est = boot_p(data[,1])
+    p2_est = boot_p(data[,2])
+    # p1_est = c(DetInc(data[,1],zero = T),UndInc(data[,1]))
+    # p2_est = c(DetInc(data[,2],zero = T),UndInc(data[,2]))
     datap[,1]<-p1_est[1:nrow(datap)]
     datap[,2]<-p2_est[1:nrow(datap)]
     undetec1 <- p1_est[-c(1:nrow(datap))]
@@ -278,18 +280,18 @@ Incidence <- function(data, allpts = FALSE, size = NULL, knots = 20, nboots = 0)
       cbind(out012, out_p)
     }, simplify = "array")
     sd_boot <- apply(out_boot,MARGIN = c(1,2), sd) 
-    esti$q0 <- esti$q0 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,1]) , UCL = (.[,5] + 1.96*sd_boot[,1]))
-    esti$q1 <- esti$q1 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,2]) , UCL = (.[,5] + 1.96*sd_boot[,2]))
-    esti$q2 <- esti$q2 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,3]) , UCL = (.[,5] + 1.96*sd_boot[,3]))
+    esti$q0 <- esti$q0 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,1]) , UCL = (.[,5] + 1.96*sd_boot[,1]), s.e. = sd_boot[,1])
+    esti$q1 <- esti$q1 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,2]) , UCL = (.[,5] + 1.96*sd_boot[,2]), s.e. = sd_boot[,2])
+    esti$q2 <- esti$q2 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,3]) , UCL = (.[,5] + 1.96*sd_boot[,3]), s.e. = sd_boot[,3])
     tmp <- nrow(esti$q0_ana)
-    esti$q0_ana <- esti$q0_ana %>% cbind(., LCL = (.[1:tmp,3:5] - 1.96*sd_boot[1:tmp,4:6]) , UCL = (.[1:tmp,3:5] + 1.96*sd_boot[1:tmp,4:6]))
+    esti$q0_ana <- esti$q0_ana %>% cbind(., LCL = (.[1:tmp,3:5] - 1.96*sd_boot[1:tmp,4:6]) , UCL = (.[1:tmp,3:5] + 1.96*sd_boot[1:tmp,4:6]),
+                                         s.e. = sd_boot[1:tmp,4:6])
     esti$q0_ana[ esti$q0_ana < 0 ] = 0
     esti
   }else{
     esti
   }
 }
-
 ####################################################################################
 #
 # (2). Example
