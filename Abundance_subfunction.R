@@ -1,78 +1,4 @@
 
-DetAbu = function(x, zero=FALSE){
-  x <- unlist(x)
-  n <- sum(x)
-  f1 <- sum(x==1)
-  f2 <- sum(x==2)
-  f3 <- sum(x==3)
-  if(f2==0){
-    f1 <- max(f1 - 1, 0)
-    f2 <- 1
-  }
-  A1 <- f1 / n * ((n-1)*f1 / ((n-1)*f1 + 2*max(f2,1)))
-  A2 <- f2 / choose(n, 2) * ((n-2)*f2 / ((n-2)*f2 + 3*max(f3,1)))^2
-  if(zero==FALSE) x <- x[x>0]
-  q.solve <- function(q){
-    e <- A1 / sum(x/n*exp(-q*x))
-    out <- sum((x/n * (1 - e * exp(-q*x)))^2) - sum(choose(x,2)/choose(n,2)) + A2
-    abs(out)
-  }
-  q <- tryCatch(optimize(q.solve, c(0,1))$min, error = function(e) {1})
-  e <- A1 / sum(x/n*exp(-q*x))
-  o <- x/n * (1 - e * exp(-q*x))
-  o
-}
-
-#
-###########################################
-#' Estimating undetected species relative abundance
-#' 
-#' \code{UndAbu} Estimating undetected species relative abundance
-#' @param x a vector of species abundance frequency
-#' @return a numerical vector
-UndAbu <- function(x){
-  x <- unlist(x)
-  n <- sum(x)  
-  f1 <- sum(x==1)
-  f2 <- sum(x==2)
-  f3 <- sum(x==3)
-  f4 <- max(sum(x == 4), 1)
-  f0.hat <- ceiling(ifelse(f2 == 0, (n - 1) / n * f1 * (f1 - 1) / 2, (n - 1) / n * f1 ^ 2/ 2 / f2))  #estimation of unseen species via Chao1
-  if(f0.hat < 0.5){
-    return(NULL)
-  } 
-  
-  if(f1>0 & f2>0){
-    A1 <- f1 / n * ((n-1)*f1 / ((n-1)*f1 + 2*f2))    
-  }else if(f1>1 & f2==0){
-    A1 <- (f1-1) / n * ((n-1)*f1 / ((n-1)*f1 + 2))
-  }else{
-    return(NULL)
-  }
-  
-  if(f2>0 & f3>0){
-    A2 <- f2 / choose(n, 2) * ((n-2)*f2 / ((n-2)*f2 + 3*f3))^2  
-  }else if(f2>1 & f3==0){
-    A2 <- (f2-1) / choose(n, 2) * ((n-2)*f2 / ((n-2)*f2 + 3))^2  
-  }else{
-    A2 <- 0
-  }
-  
-  
-  R <- ifelse(A2>0, A1^2/A2, 1)
-  j <- 1:f0.hat
-  f.solve <- function(x){ 
-    out <- sum(x^j)^2 / sum((x^j)^2) - R
-    abs(out)
-  }
-  b <-  tryCatch(optimize(f.solve, lower=(R-1)/(R+1), upper=1, tol=1e-5)$min, error = function(e) {(R-1)/(R+1)})
-  a <- A1 / sum(b^j)
-  p <- a * b^j
-  if(f0.hat == 1) p <- A1
-  p
-}
-
-
 
 Dq_in<-function(x1,x2,mm,q){
   out = apply(mm,1,function(mm) {
@@ -215,6 +141,140 @@ Dq1_ext_choose<-function(x1,x2,p1_hat,p2_hat,n1,n2,mm){
 
 
 
+Chat1_f0Fun <-function(f1, f2, n) {
+  if (f2 > 0) {
+    f0 <- (n - 1) / n * f1^2 / (2 * f2)
+    #C<-1-f0*f1/(n*f0+f1)
+    #C <- 1 - f1 / n * ((n - 1) * f1 / ((n - 1) * f1 + 2 * f2))
+    C <- 1 - f1 / n * (n-1)*f1/((n-1)*f1+2*f2)
+    
+  } else if (f2 == 0 & f1 != 0) {
+    f0 <- (n - 1) / n * f1 * (f1 - 1) / 2
+    #C<-1-f0*f1/(n*f0+f1)
+    C <- 1 - f1 / n * ((n - 1) * (f1 - 1) / ((n - 1) * (f1 - 1) + 2))
+    
+  } else {
+    f0 <- (n - 1) / n * f1 * (f1 - 1) / 2
+    #f0 <- 0
+    C <- 1
+  }
+  f0 <- ceiling(f0)
+  return(c(C, f0))
+}
+
+
+##for create bootstrap sample#####
+Abun_CreatBootstrapSample <- function(data, nboots = 0){
+  data <- data[rowSums(data)>0,]
+  if(sum(data[,1]>0) < sum(data[,2]>0)){
+    data = data[,c(2,1)]
+  }
+  
+  if(nboots>1){
+    x1 = data[, 1]
+    x2 = data[, 2]
+    n1 = sum(x1)
+    n2 = sum(x2)
+    
+   
+    ##bootstrap p from JADE: two parameters
+    # p1 = DetAbu(x1, zero = T)
+    # p2 = DetAbu(x2, zero = T)
+    # data_p = data
+    # data_p[,1]<-p1
+    # data_p[,2]<-p2
+    # undetec1 <- UndAbu(x1)
+    # undetec2 <- UndAbu(x2)
+    
+    ## bootstrap p from 2013: one parameter
+    p1_est = boot_p_abu(x1)
+    p2_est = boot_p_abu(x2)
+    data_p = data
+    data_p[,1]<-p1_est[1:nrow(data_p)]
+    data_p[,2]<-p2_est[1:nrow(data_p)]
+    undetec1 <- p1_est[-c(1:nrow(data_p))]
+    undetec2 <- p2_est[-c(1:nrow(data_p))]
+    
+    
+    
+    f1 = sum(rowSums(data)==1)
+    f2 = sum(rowSums(data)==2)
+    n=n1+n2
+    f0hat<-Chat1_f0Fun(f1,f2,n)[2]
+    
+    data_p = matrix(data = 0,nrow = f0hat, ncol = 2,
+                    dimnames = list(NULL, names(data_p))) %>% rbind(data_p,.)
+    zero1 <-  which(data_p[,1]==0)
+    zero2 <-  which(data_p[,2]==0)
+    
+    data_boot <- list() 
+    for(k in 1:nboots){
+      fill1 <- sample(x = zero1,size = length(undetec1), replace = F)
+      fill2 <- sample(x = zero2,size = length(undetec2), replace = F)
+      data_pboot <- data_p 
+      data_pboot[fill1,1] <- undetec1
+      data_pboot[fill2,2] <- undetec2
+      nrow(data_pboot)
+      # bootx1 <- sapply(data_pboot[,1], function(i) rbinom(n = 1, size = n1, prob = i)) 
+      # bootx2 <- sapply(data_pboot[,2], function(i) rbinom(n = 1, size = n2, prob = i)) 
+      bootx1<- rmultinom (n = 1, size = n1, prob = data_pboot[,1])
+      bootx2<- rmultinom (n = 1, size = n2, prob = data_pboot[,2])
+      
+      tmp <- sum(bootx1>0) > sum(bootx2>0)
+      tmp2 <- ((bootx1==0) & (bootx1>0)) %>% sum 
+      while( (tmp==F) | tmp2==0 ){
+        fill1 <- sample(x = zero1,size = length(undetec1), replace = F)
+        fill2 <- sample(x = zero2,size = length(undetec2), replace = F)
+        data_pboot <- data_p 
+        data_pboot[fill1,1] <- undetec1
+        data_pboot[fill2,2] <- undetec2
+        bootx1<- rmultinom (n = 1, size = n1, prob = data_pboot[,1])
+        bootx2<- rmultinom (n = 1, size = n2, prob = data_pboot[,2]) 
+        tmp <- sum(bootx1>0) > sum(bootx2>0)
+        tmp2 <- ((bootx1==0) & (bootx2>0)) %>% sum 
+      }
+      data_b<-cbind(bootx1,bootx2)
+      data_b <- data_b[rowSums(data_b)>0,] 
+      colnames(data_b)<-c(colnames(data))
+      data_boot[[k]]<-data_b
+      
+    }
+    
+  }
+  return(data_boot)
+}
+
+
+###for calculate abundance bootstrap confidence interval####
+
+cal_estboot_CI<-function(estboot=NULL,est=NULL){
+  out_boot012 <- sapply(1:length(estboot), function(j){
+    tmp<-estboot[[j]]
+    out012tmp<-matrix(c(tmp$q0[,5], tmp$q1[,5], tmp$q2[,5]), ncol = 3,dimnames = list(NULL,c("q0","q1","q2")))
+    
+  }, simplify = "array")
+  
+  
+  out_bootana <- sapply(1:length(estboot), function(j){
+    tmp<-estboot[[j]]
+    outanatmp<-matrix(c(tmp$q0_ana[,3], tmp$q0_ana[,4], tmp$q0_ana[,5]),ncol = 3,dimnames=list(NULL,colnames(tmp$q0_ana)[3:5]))
+    
+  }, simplify = "array")
+  sd_boot_012 <- apply(out_boot012,MARGIN = c(1,2), sd) 
+  sd_boot_ana <- apply(out_bootana,MARGIN = c(1,2), sd) 
+  
+  # mean_boot_012 <- apply(out_boot012,MARGIN = c(1,2), mean) 
+  #  mean_boot_ana <- apply(out_bootana,MARGIN = c(1,2), mean) 
+  estfinal<-est
+  estfinal$q0 <- estfinal$q0 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot_012[,1]) , UCL = (.[,5] + 1.96*sd_boot_012[,1]),s.e.=sd_boot_012[,1])
+  estfinal$q1 <- estfinal$q1 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot_012[,2]) , UCL = (.[,5] + 1.96*sd_boot_012[,2]),s.e.=sd_boot_012[,2])
+  estfinal$q2 <- estfinal$q2 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot_012[,3]) , UCL = (.[,5] + 1.96*sd_boot_012[,3]),s.e.=sd_boot_012[,3])
+  estfinal$q0_ana <- estfinal$q0_ana %>% cbind(., LCL = (.[,3:5] - 1.96*sd_boot_ana[,1:3]) , UCL = (.[,3:5] + 1.96*sd_boot_ana[,1:3]),s.e=sd_boot_ana[,1:3])
+  estfinal$q0_ana[ estfinal$q0_ana < 0 ] = 0
+  
+  return(estfinal)
+  
+}
 
 
 
