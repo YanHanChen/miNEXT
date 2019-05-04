@@ -120,7 +120,8 @@ Incidence <- function(data, allpts = FALSE, size = NULL, knots = 20, nboots = 0)
     esti
   }
 }
-                        #' Inci(data, allpts = FALSE, size = NULL, knots = 20 ) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
+                        
+#' Inci(data, allpts = FALSE, size = NULL, knots = 20 ) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
 #' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be the first column.
 #' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
 #' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
