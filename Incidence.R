@@ -33,7 +33,94 @@ source('JADE.r')
 source('bootstrap_p.r')
 source('plot_function.r')
 
-#' Inci(data, allpts = FALSE, size = NULL, knots = 20 ) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
+#' Incidence(data, allpts = FALSE, size = NULL, knots = 20 ,nboots = 0) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
+#' along with their confidence interval.
+#' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be the first column.
+#' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
+#' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
+#' @param knots the number of points that the mixture diveristy will be computed. Default is 20.
+#' @param nboots the number of replication bootstrap times. Use 0 to skip bootstrap which might take more time. Default is 0.                 
+#' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. All estimators
+#' are presented along with their confidence interval.
+Incidence <- function(data, allpts = FALSE, size = NULL, knots = 20, nboots = 0){
+  data <- data[rowSums(data)>0,]
+  if(sum(data[,1]>0) < sum(data[,2]>0)){
+    data = data[,c(2,1)]
+  }
+  esti <- Inci(data, allpts, size, knots )
+  if(nboots>1){
+    nT1 <- data[1,1]
+    nT2 <- data[1,2]
+    datap = data[-1,]
+
+    p1_est = boot_p(data[,1])
+    p2_est = boot_p(data[,2])
+    # p1_est = c(DetInc(data[,1],zero = T),UndInc(data[,1]))
+    # p2_est = c(DetInc(data[,2],zero = T),UndInc(data[,2]))
+    datap[,1]<-p1_est[1:nrow(datap)]
+    datap[,2]<-p2_est[1:nrow(datap)]
+    undetec1 <- p1_est[-c(1:nrow(datap))]
+    undetec2 <- p2_est[-c(1:nrow(datap))]
+    
+    Q1 = sum(rowSums(data[-1,])==1)
+    Q2 = sum(rowSums(data[-1,])==2)
+    nT = nT1+nT2
+    Q0.hat <- ceiling(ifelse(Q2 == 0, (nT - 1) / nT * Q1 * (Q1 - 1) / 2, (nT - 1) / nT * Q1 ^ 2/ 2 / Q2))  #Chao2 estimator
+    datap = matrix(data = 0,nrow = Q0.hat, ncol = 2,
+                   dimnames = list(NULL, names(datap))) %>% rbind(datap,.)
+    zero1 <-  which(datap[,1]==0)
+    zero2 <-  which(datap[,2]==0)
+    data_boot <- sapply(1:nboots,function(k){
+      fill1 <- sample(x = zero1,size = length(undetec1), replace = F)
+      fill2 <- sample(x = zero2,size = length(undetec2), replace = F)
+      datapp <- datap 
+      datapp[fill1,1] <- undetec1
+      datapp[fill2,2] <- undetec2
+      data1 <- sapply(datapp[,1], function(i) rbinom(n = 1, size = nT1, prob = i)) 
+      data2 <- sapply(datapp[,2], function(i) rbinom(n = 1, size = nT2, prob = i)) 
+      tmp <- sum(data1>0) > sum(data2>0)
+      tmp2 <- ((data1==0) & (data2>0)) %>% sum 
+      while( (tmp==F) | tmp2==0 ){
+        fill1 <- sample(x = zero1,size = length(undetec1), replace = F)
+        fill2 <- sample(x = zero2,size = length(undetec2), replace = F)
+        datapp <- datap 
+        datapp[fill1,1] <- undetec1
+        datapp[fill2,2] <- undetec2
+        data1 <- sapply(datapp[,1], function(i) rbinom(n = 1, size = nT1, prob = i)) 
+        data2 <- sapply(datapp[,2], function(i) rbinom(n = 1, size = nT2, prob = i)) 
+        tmp <- sum(data1>0) > sum(data2>0)
+        tmp2 <- ((data1==0) & (data2>0)) %>% sum 
+      }
+      c(data1,data2)
+    })
+    sepe <- nrow(data_boot)
+    out_boot <- sapply(1:nboots, function(j){
+      #print(j)
+      d1 <- c(nT1,data_boot[1:(sepe/2),j])
+      d2 <- c(nT2,data_boot[(sepe/2+1):sepe,j])
+      data_b <- matrix( c(d1,d2), ncol = 2 ,dimnames = list(NULL, names(datap) ))
+      data_b <- data_b[rowSums(data_b)>0,] 
+      out = Inci(data_b, allpts, size, knots )
+      out012 <- matrix(c(out$q0[,5], out$q1[,5], out$q2[,5]),
+                       ncol = 3, dimnames = list(NULL,c("q0","q1","q2")))
+      out_p <- matrix(c(out$q0_ana[,3], out$q0_ana[,4], out$q0_ana[,5]),
+                      ncol = 3, dimnames = list(NULL,colnames(out$q0_ana)[3:5])) %>% rbind(., .[1:(nrow(out$q0)-nrow(out$q0_ana)),])
+      cbind(out012, out_p)
+    }, simplify = "array")
+    sd_boot <- apply(out_boot,MARGIN = c(1,2), sd) 
+    esti$q0 <- esti$q0 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,1]) , UCL = (.[,5] + 1.96*sd_boot[,1]), s.e. = sd_boot[,1])
+    esti$q1 <- esti$q1 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,2]) , UCL = (.[,5] + 1.96*sd_boot[,2]), s.e. = sd_boot[,2])
+    esti$q2 <- esti$q2 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,3]) , UCL = (.[,5] + 1.96*sd_boot[,3]), s.e. = sd_boot[,3])
+    tmp <- nrow(esti$q0_ana)
+    esti$q0_ana <- esti$q0_ana %>% cbind(., LCL = (.[1:tmp,3:5] - 1.96*sd_boot[1:tmp,4:6]) , UCL = (.[1:tmp,3:5] + 1.96*sd_boot[1:tmp,4:6]),
+                                         s.e. = sd_boot[1:tmp,4:6])
+    esti$q0_ana[ esti$q0_ana < 0 ] = 0
+    esti
+  }else{
+    esti
+  }
+}
+                        #' Inci(data, allpts = FALSE, size = NULL, knots = 20 ) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
 #' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be the first column.
 #' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
 #' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
@@ -203,94 +290,6 @@ Inci <- function(data, allpts = FALSE, size = NULL, knots = 20 ){
     d2[d2[,2]>T1,c(3,5)]=NA
   }
   return(list(q0 = d0, q1 = d1, q2 = d2, q0_ana = q0_ana))
-}
-                  
-#' Incidence(data, allpts = FALSE, size = NULL, knots = 20 ,nboots = 0) for incidence data, comupute composite diversity of any sample and species composition (shared and unique species)
-#' along with their confidence interval.
-#' @param data a Sx2 dataframe, the intact assemblage (main) assemblage should be the first column.
-#' @param allpts specifying whether to compute all combinations of sampling units of two assemblages. Default is FALSE.
-#' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
-#' @param knots the number of points that the mixture diveristy will be computed. Default is 20.
-#' @param nboots the number of replication bootstrap times. Use 0 to skip bootstrap which might take more time. Default is 0.                 
-#' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. All estimators
-#' are presented along with their confidence interval.
-Incidence <- function(data, allpts = FALSE, size = NULL, knots = 20, nboots = 0){
-  data <- data[rowSums(data)>0,]
-  if(sum(data[,1]>0) < sum(data[,2]>0)){
-    data = data[,c(2,1)]
-  }
-  esti <- Inci(data, allpts, size, knots )
-  if(nboots>1){
-    nT1 <- data[1,1]
-    nT2 <- data[1,2]
-    datap = data[-1,]
-
-    p1_est = boot_p(data[,1])
-    p2_est = boot_p(data[,2])
-    # p1_est = c(DetInc(data[,1],zero = T),UndInc(data[,1]))
-    # p2_est = c(DetInc(data[,2],zero = T),UndInc(data[,2]))
-    datap[,1]<-p1_est[1:nrow(datap)]
-    datap[,2]<-p2_est[1:nrow(datap)]
-    undetec1 <- p1_est[-c(1:nrow(datap))]
-    undetec2 <- p2_est[-c(1:nrow(datap))]
-    
-    Q1 = sum(rowSums(data[-1,])==1)
-    Q2 = sum(rowSums(data[-1,])==2)
-    nT = nT1+nT2
-    Q0.hat <- ceiling(ifelse(Q2 == 0, (nT - 1) / nT * Q1 * (Q1 - 1) / 2, (nT - 1) / nT * Q1 ^ 2/ 2 / Q2))  #Chao2 estimator
-    datap = matrix(data = 0,nrow = Q0.hat, ncol = 2,
-                   dimnames = list(NULL, names(datap))) %>% rbind(datap,.)
-    zero1 <-  which(datap[,1]==0)
-    zero2 <-  which(datap[,2]==0)
-    data_boot <- sapply(1:nboots,function(k){
-      fill1 <- sample(x = zero1,size = length(undetec1), replace = F)
-      fill2 <- sample(x = zero2,size = length(undetec2), replace = F)
-      datapp <- datap 
-      datapp[fill1,1] <- undetec1
-      datapp[fill2,2] <- undetec2
-      data1 <- sapply(datapp[,1], function(i) rbinom(n = 1, size = nT1, prob = i)) 
-      data2 <- sapply(datapp[,2], function(i) rbinom(n = 1, size = nT2, prob = i)) 
-      tmp <- sum(data1>0) > sum(data2>0)
-      tmp2 <- ((data1==0) & (data2>0)) %>% sum 
-      while( (tmp==F) | tmp2==0 ){
-        fill1 <- sample(x = zero1,size = length(undetec1), replace = F)
-        fill2 <- sample(x = zero2,size = length(undetec2), replace = F)
-        datapp <- datap 
-        datapp[fill1,1] <- undetec1
-        datapp[fill2,2] <- undetec2
-        data1 <- sapply(datapp[,1], function(i) rbinom(n = 1, size = nT1, prob = i)) 
-        data2 <- sapply(datapp[,2], function(i) rbinom(n = 1, size = nT2, prob = i)) 
-        tmp <- sum(data1>0) > sum(data2>0)
-        tmp2 <- ((data1==0) & (data2>0)) %>% sum 
-      }
-      c(data1,data2)
-    })
-    sepe <- nrow(data_boot)
-    out_boot <- sapply(1:nboots, function(j){
-      #print(j)
-      d1 <- c(nT1,data_boot[1:(sepe/2),j])
-      d2 <- c(nT2,data_boot[(sepe/2+1):sepe,j])
-      data_b <- matrix( c(d1,d2), ncol = 2 ,dimnames = list(NULL, names(datap) ))
-      data_b <- data_b[rowSums(data_b)>0,] 
-      out = Inci(data_b, allpts, size, knots )
-      out012 <- matrix(c(out$q0[,5], out$q1[,5], out$q2[,5]),
-                       ncol = 3, dimnames = list(NULL,c("q0","q1","q2")))
-      out_p <- matrix(c(out$q0_ana[,3], out$q0_ana[,4], out$q0_ana[,5]),
-                      ncol = 3, dimnames = list(NULL,colnames(out$q0_ana)[3:5])) %>% rbind(., .[1:(nrow(out$q0)-nrow(out$q0_ana)),])
-      cbind(out012, out_p)
-    }, simplify = "array")
-    sd_boot <- apply(out_boot,MARGIN = c(1,2), sd) 
-    esti$q0 <- esti$q0 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,1]) , UCL = (.[,5] + 1.96*sd_boot[,1]), s.e. = sd_boot[,1])
-    esti$q1 <- esti$q1 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,2]) , UCL = (.[,5] + 1.96*sd_boot[,2]), s.e. = sd_boot[,2])
-    esti$q2 <- esti$q2 %>% cbind(., LCL = (.[,5] - 1.96*sd_boot[,3]) , UCL = (.[,5] + 1.96*sd_boot[,3]), s.e. = sd_boot[,3])
-    tmp <- nrow(esti$q0_ana)
-    esti$q0_ana <- esti$q0_ana %>% cbind(., LCL = (.[1:tmp,3:5] - 1.96*sd_boot[1:tmp,4:6]) , UCL = (.[1:tmp,3:5] + 1.96*sd_boot[1:tmp,4:6]),
-                                         s.e. = sd_boot[1:tmp,4:6])
-    esti$q0_ana[ esti$q0_ana < 0 ] = 0
-    esti
-  }else{
-    esti
-  }
 }
 ####################################################################################
 #

@@ -1,4 +1,11 @@
-
+###########################################
+#' Estimating species incidence probability 
+#' Chao, A., Wang, Y. T., and Jost, L. (2013). 
+#' Entropy and the species accumulation curve: a novel estimator of entropy via discovery rates of new species.
+#' Appendix S2:  Estimating species relative abundance :one parameter
+#' boot_p_inc(x) is a function of estimating species incidence probability .
+#' @param Spec a vector of species incidence frequency where the first element is the number of sampling units
+#' @return a numerical vector
 boot_p_inc <- function (Spec) {
   nT <- Spec[1]
   Spec <- Spec[-1]
@@ -30,7 +37,7 @@ boot_p_inc <- function (Spec) {
 #' Chao, A., Wang, Y. T., and Jost, L. (2013). 
 #' Entropy and the species accumulation curve: a novel estimator of entropy via discovery rates of new species.
 #' Appendix S2:  Estimating species relative abundance :one parameter
-#' boot_p_abu(x) is a function of estimating detected species relative abundance.
+#' boot_p_abu(x) is a function of estimating species relative abundance.
 #' @param x a vector of species abundance frequency
 #' @return a numerical vector
 boot_p_abu <- function(Spec)
