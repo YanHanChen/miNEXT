@@ -33,10 +33,11 @@ source("JADE.R")
 source("bootstrap_p.R")
 source("plot_function.R")
 
-#' Abundance(data, knots = 20) for abundance data, comupute composite diversity of any sample and species composition (shared and unique species)
+#' Abundance(data, knots = 20, size=NULL, nboots = 0) for abundance data, comupute composite diversity of any sample and species composition (shared and unique species)
 #' @param data1 a Sx2 dataframe, the intact assemblage (main) assemblage should be placed in the first column.
-#' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
 #' @param knots the number of points that the mixture diveristy will be computed in rarefaction and extrapolation, respectively. Default is 10.
+#' @param size a vector specifying the smapling units of intact (main) assemblage. Default is NULL.
+#' @param nbbots the number of replication times for bootstrap. Use 0 to skip bootstrap which might take more time. Default is 0. 
 #' @return a list containing 4 tables. Th first 3 are diversities of the two assemblages and the mixed one. The 4th table is the species composition of the mixed assemblage. 
 Abundance<-function(data=NULL,knots=10,size=NULL,nboots=0){
   result_abun<-NULL
